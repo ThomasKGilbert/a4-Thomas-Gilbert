@@ -1,5 +1,6 @@
 require('dotenv').config()
 
+const ViteExpress = require('vite-express')
 const express = require('express');
 const { MongoClient, ObjectId } = require('mongodb');
 const session = require('express-session');
@@ -32,11 +33,11 @@ async function run() {
 
 run()
 
-app.get('/', (req, res) => {
+app.get('/', (req, res, next) => {
   if(!req.session.userId) {
     return res.redirect('/login.html')
   }
-  res.sendFile(__dirname + '/public/index.html')
+  next()
 })
 
 app.use(express.static('public', {index: false}));
@@ -149,6 +150,6 @@ function requireLogin(req, res, next) {
   next()
 }
 
-app.listen(process.env.PORT || port, () => {
+ViteExpress.listen(app, process.env.PORT || port, () => {
   console.log(`Listening on port ${port}`)
 });
