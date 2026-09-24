@@ -1,9 +1,126 @@
-import React, {useState} from "react";
+import React, {useEffect, useState} from "react";
+import Task from "./Task";
 
 export default function App(){
     const [taskText, setTaskText] = useState("");
-    const [priority, setPriority] = useState("");
+    const [priority, setPriority] = useState("high");
+    const [tasks, setTasks] = useState([]);
 
+    useEffect(() => {
+        loadTaskList()
+    }, [])
+
+    async function loadTaskList(){
+        const response = await fetch("/task-list")
+        const json = await response.json()
+        setTasks(json)
+    }
+
+    async function addTask() {
+      if(taskText === "") {
+        alert("Please enter a task");
+        return;
+      }
+
+      const newTask = {
+        task: taskText,
+        priority: priority,
+        done: false,
+        creationDate: new Date().toISOString().split("T")[0],
+      };
+
+      try{
+        const response = await fetch("/add-task", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(newTask),
+        })
+
+        if(response.ok){
+          const updatedTodoList = await response.json();
+          setTasks(updatedTodoList);
+          setTaskText("");
+        }
+        else{
+          console.error("Server Error: ", response.statusText);
+        }
+      }catch(e){
+        console.error("Failed to add task: ", e);
+        alert("There was a problem adding task!");
+      }
+    }
+
+    async function deleteTask(id) {
+      try {
+        const response = await fetch("/delete-task", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({id}),
+        })
+
+        if(response.ok){
+          const updatedTodoList = await response.json();
+          setTasks(updatedTodoList);
+        }
+        else{
+          console.error("Server Error: ", response.statusText);
+        }
+      } catch(e){
+        console.error("Failed to delete task: ", e);
+      }
+    }
+
+    async function editTask(id) {
+      const newText = prompt("Please edit task text:");
+      if(newText === null || newText.trim() === "") {
+        return
+      }
+
+      const newPriority = prompt("Please edit priority (high/medium/low):");
+      if(!['high', 'medium', 'low'].includes(newPriority)){
+        alert("Priority can be high, medium, or low")
+        return
+      }
+
+      try{
+        const response = await fetch("/edit-task", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({id, task: newText, priority: newPriority}),
+        })
+
+        if(response.ok){
+          const updatedTodoList = await response.json();
+          setTasks(updatedTodoList);
+        }
+        else{
+          console.error("Server Error: ", response.statusText);
+        }
+      }
+      catch(e){
+        console.error("Failed to edit task: ", e);
+      }
+    }
+
+    async function toggleTask(id) {
+      try {
+        const response = await fetch("/toggle-task", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({id}),
+        })
+
+        if(response.ok){
+          const updatedTodoList = await response.json();
+          setTasks(updatedTodoList);
+        }
+        else{
+          console.error("Server Error: ", response.statusText);
+        }
+      } catch(e){
+        console.error("Failed to delete task: ", e);
+      }
+    }
 
     return(
         <div className="w-full min-h-screen bg-gradient-to-r from-[#667db6] via-[#0082c8] to-[#667db6] p-2.5 flex justify-center items-center">
@@ -32,10 +149,23 @@ export default function App(){
 
                     <button
                         className="w-full max-w-22 rounded-lg border-none bg-orange-400 cursor-pointer"
+                        onClick={addTask}
                     >
                         Add Task
                     </button>
                 </div>
+
+                <ul>
+                    {tasks.map((task) => (
+                        <Task
+                            key={task._id}
+                            task={task}
+                            onToggle={toggleTask}
+                            onDelete={deleteTask}
+                            onEdit={editTask}
+                        />
+                    ))}
+                </ul>
             </div>
         </div>
     )
